@@ -5,6 +5,7 @@ on:
     branches:
       - master
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -47,15 +48,19 @@ jobs:
         run: make build_doxygen_adoc
       - name: Build documentation
         run: make -j 2
-      - name: Deploy to Mythic Beasts
-        if: ${{ github.ref == 'refs/heads/master' }}
-        uses: ./.github/actions/deploy-action
+      - name: Upload GitHub Pages artifacts
+        uses: actions/upload-pages-artifact@v2
         with:
-          private_ssh_key: ${{ secrets.DEPLOY_SSH_KEY }}
-          public_bastion_host_keys: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-          bastion_host: ${{ secrets.DEPLOY_BASTION_HOST }}
-          primary_host: ${{ secrets.DEPLOY_PRIMARY_HOST }}
-          secondary_host: ${{ secrets.DEPLOY_SECONDARY_HOST }}
-          # this needs to match destination: in _config.yml
-          source: documentation/html/
-          destination: documentation
+          path: documentation/html/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
